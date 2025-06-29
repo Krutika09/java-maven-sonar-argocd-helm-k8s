@@ -14,9 +14,14 @@ pipeline {
     }
     stage('Build and Test') {
       steps {
-        sh 'ls -ltr'
-        // build the project and create a JAR file
-        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+        script {
+          if (!fileExists('java-maven-sonar-argocd-helm-k8s/spring-boot-app/pom.xml')) {
+            error 'ERROR: pom.xml not found. Please check your repo structure.'
+          }
+        }
+        dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+          sh 'mvn clean package'
+        }
       }
     }
     stage('Static Code Analysis') {
@@ -43,6 +48,11 @@ pipeline {
                 dockerImage.push()
             }
         }
+      }
+    }
+    stage('Check Docker') {
+      steps {
+        sh 'docker version'
       }
     }
     stage('Update Deployment File') {
