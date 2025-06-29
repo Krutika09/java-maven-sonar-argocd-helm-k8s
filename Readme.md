@@ -37,6 +37,8 @@ sudo systemctl restart docker
 ## 4. Install and Configure SonarQube
 
 ```bash
+sudo apt update && sudo apt install unzip -y
+
 # Add user
 sudo adduser sonarqube
 sudo su - sonarqube
