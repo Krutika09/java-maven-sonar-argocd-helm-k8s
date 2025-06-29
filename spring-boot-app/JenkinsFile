@@ -17,18 +17,19 @@ pipeline {
     stage('Build and Test') {
       steps {
         script {
-          def pomPath = 'java-maven-sonar-argocd-helm-k8s/spring-boot-app/pom.xml'
-          if (!fileExists(pomPath)) {
-            sh 'echo "Contents of workspace:" && ls -R'
-            error "ERROR: ${pomPath} not found. Please check your repo structure."
+          def pomPath = 'spring-boot-app/pom.xml'
+            if (!fileExists(pomPath)) {
+              sh 'echo "Contents of workspace:" && ls -R'
+              error "ERROR: ${pomPath} not found. Please check your repo structure."
+            }
           }
-        }
 
-        dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
-          sh 'mvn clean package'
-        }
-      }
+         dir('spring-boot-app') {
+        sh 'mvn clean package'
     }
+  }
+}
+
 
     stage('Static Code Analysis') {
       environment {
