@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        SONAR_HOST_URL = 'http://localhost:9000'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -17,9 +21,6 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            environment {
-                SONAR_HOST_URL = 'http://localhost:9000'
-            }
             steps {
                 withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                     dir('spring-boot-app') {
@@ -33,7 +34,5 @@ pipeline {
                 }
             }
         }
-
-                }
-    }
-}
+    } // ✅ closes stages
+} // ✅ closes pipeline
