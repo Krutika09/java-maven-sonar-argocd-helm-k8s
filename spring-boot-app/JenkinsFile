@@ -23,7 +23,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             environment {
-                SONAR_HOST_URL = 'http://localhost:9000' // or your EC2 IP
+                SONAR_HOST_URL = 'http://localhost:9000' // Change if needed
             }
             steps {
                 withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
