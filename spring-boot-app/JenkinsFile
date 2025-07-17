@@ -2,49 +2,52 @@ pipeline {
     agent any
 
     environment {
-        MAVEN_HOME = tool 'Maven'
-        JAVA_HOME = tool 'JDK17'
+        APP_DIR = "spring-boot-app"
+        IMAGE_NAME = "springboot-app"
+        IMAGE_TAG = "v1"
+        SONARQUBE_SERVER = "MySonarQube" // Defined in Jenkins > Configure System
     }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
+                echo "Checked out code from SCM."
             }
         }
 
-        stage('Build with Maven') {
+        stage('Clean & Build Project') {
             steps {
-                dir('spring-boot-app') {
-                    sh "'${MAVEN_HOME}/bin/mvn' clean install"
+                dir("${APP_DIR}") {
+                    echo "Building project using Maven..."
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
-        stage('SonarQube Analysis') {
-            environment {
-                SONAR_HOST_URL = 'http://localhost:9000' // Change if needed
-            }
+        stage('Static Code Analysis - SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                    dir('spring-boot-app') {
-                        sh """
-                            '${MAVEN_HOME}/bin/mvn' sonar:sonar \
-                            -Dsonar.projectKey=my-app \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR_TOKEN
-                        """
+                dir("${APP_DIR}") {
+                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                        echo "Running SonarQube analysis..."
+                        sh 'mvn sonar:sonar'
                     }
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Build Docker Image') {
             steps {
-                dir('spring-boot-app') {
-                    sh 'kubectl apply -f k8s/deployment.yaml'
-                    sh 'kubectl apply -f k8s/service.yaml'
+                dir("${APP_DIR}") {
+                    echo "Building Docker image..."
+                    sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
                 }
+            }
+        }
+
+        stage('Post Build Info') {
+            steps {
+                echo "Docker image $IMAGE_NAME:$IMAGE_TAG built successfully. No Docker push was performed."
             }
         }
     }
