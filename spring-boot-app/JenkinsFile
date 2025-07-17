@@ -2,21 +2,19 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven-3.9.7'  // Ensure this matches your Jenkins Maven install name
+        maven 'maven-3.9.7'
     }
 
     environment {
-        SONARQUBE = 'MySonarQubeServer' // Name in Jenkins > Manage Jenkins > Configure System
-        SONAR_TOKEN = credentials('sonar-token') // Jenkins credential ID for Sonar user token
         IMAGE_NAME = 'springboot-app'
         IMAGE_TAG = 'v1'
+        DOCKER_REPO = 'your-dockerhub-username/springboot-app'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 echo 'Code checked out'
-                sh 'echo === WORKSPACE CONTENT ==='
                 sh 'ls -R'
             }
         }
@@ -24,7 +22,6 @@ pipeline {
         stage('Build and Test') {
             steps {
                 dir('spring-boot-app') {
-                    echo 'Building with Maven...'
                     sh 'mvn clean install'
                 }
             }
@@ -33,9 +30,7 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 dir('spring-boot-app') {
-                    withSonarQubeEnv("${SONARQUBE}") {
-                        sh "mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}"
-                    }
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=my-app -Dsonar.host.url=http://localhost:9000 -Dsonar.login=admin -Dsonar.password=admin'
                 }
             }
         }
@@ -43,12 +38,8 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 dir('spring-boot-app') {
-                    script {
-                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                        // Optional: Add Docker push command if using DockerHub
-                        // sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} <your-dockerhub-username>/${IMAGE_NAME}:${IMAGE_TAG}"
-                        // sh "docker push <your-dockerhub-username>/${IMAGE_NAME}:${IMAGE_TAG}"
-                    }
+                    sh 'docker build -t $DOCKER_REPO:$IMAGE_TAG .'
+                    sh 'docker push $DOCKER_REPO:$IMAGE_TAG'
                 }
             }
         }
@@ -62,9 +53,10 @@ pipeline {
         stage('Update Deployment File') {
             steps {
                 dir('spring-boot-app-manifests') {
-                    script {
-                        sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yml"
-                    }
+                    sh '''
+                    sed -i "s|image:.*|image: $DOCKER_REPO:$IMAGE_TAG|" deployment.yml
+                    cat deployment.yml
+                    '''
                 }
             }
         }
