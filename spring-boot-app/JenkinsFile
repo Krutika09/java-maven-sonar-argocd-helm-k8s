@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'maven-3.9.6'
+    }
+
     environment {
         IMAGE_NAME = 'springboot-app'
         IMAGE_TAG = 'v1'
@@ -11,7 +15,6 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Code checked out'
-                sh 'echo === WORKSPACE CONTENT ==='
                 sh 'ls -R'
             }
         }
@@ -19,7 +22,6 @@ pipeline {
         stage('Build and Test') {
             steps {
                 dir('spring-boot-app') {
-                    sh 'echo "Building with Maven..."'
                     sh 'mvn clean install'
                 }
             }
@@ -52,9 +54,7 @@ pipeline {
             steps {
                 dir('spring-boot-app-manifests') {
                     sh '''
-                    echo "Updating deployment.yml image tag..."
                     sed -i "s|image:.*|image: $DOCKER_REPO:$IMAGE_TAG|" deployment.yml
-                    echo "Updated deployment.yml content:"
                     cat deployment.yml
                     '''
                 }
