@@ -1,86 +1,64 @@
 pipeline {
-  agent any  // Run on Jenkins host where Docker is installed
+    agent any
 
-  stages {
-
-    stage('Checkout') {
-      steps {
-        sh 'echo "Code checked out"'
-        sh 'echo "=== WORKSPACE CONTENT ===" && ls -R'
-      }
+    environment {
+        IMAGE_NAME = 'springboot-app'
+        IMAGE_TAG = 'v1'
+        DOCKER_REPO = 'your-dockerhub-username/springboot-app'
     }
 
-    stage('Build and Test') {
-      steps {
-        script {
-          def pomPath = 'pom.xml'
-          if (!fileExists(pomPath)) {
-            sh 'echo "Contents of workspace:" && ls -R'
-            error "ERROR: ${pomPath} not found. Please check your repo structure."
-          }
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Code checked out'
+                sh 'echo === WORKSPACE CONTENT ==='
+                sh 'ls -R'
+            }
         }
 
-        dir('.') {
-          sh 'mvn clean package'
+        stage('Build and Test') {
+            steps {
+                dir('spring-boot-app') {
+                    sh 'echo "Building with Maven..."'
+                    sh 'mvn clean install'
+                }
+            }
         }
-      }
-    }
 
-    stage('Static Code Analysis') {
-      environment {
-        SONAR_URL = "http://44.249.107.76:9000"
-      }
-      steps {
-        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          dir('.') {
-            sh 'mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=$SONAR_URL'
-          }
+        stage('Static Code Analysis') {
+            steps {
+                dir('spring-boot-app') {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=my-app -Dsonar.host.url=http://localhost:9000 -Dsonar.login=admin -Dsonar.password=admin'
+                }
+            }
         }
-      }
-    }
 
-    stage('Build and Push Docker Image') {
-      environment {
-        DOCKER_IMAGE = "abhishekf5/ultimate-cicd:${BUILD_NUMBER}"
-      }
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-          script {
-            sh """
-              cd .
-              docker build -t ${DOCKER_IMAGE} .
-              echo $PASSWORD | docker login -u $USERNAME --password-stdin
-              docker push ${DOCKER_IMAGE}
-            """
-          }
+        stage('Build and Push Docker Image') {
+            steps {
+                dir('spring-boot-app') {
+                    sh 'docker build -t $DOCKER_REPO:$IMAGE_TAG .'
+                    sh 'docker push $DOCKER_REPO:$IMAGE_TAG'
+                }
+            }
         }
-      }
-    }
 
-    stage('Check Docker') {
-      steps {
-        sh 'docker version'
-      }
-    }
-
-    stage('Update Deployment File') {
-      environment {
-        GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-        GIT_USER_NAME = "iam-veeramalla"
-      }
-      steps {
-        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            git config user.email "abhishek.xyz@gmail.com"
-            git config user.name "Abhishek Veeramalla"
-            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" ../spring-boot-app-manifests/deployment.yml
-            git add ../spring-boot-app-manifests/deployment.yml
-            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-          '''
+        stage('Check Docker') {
+            steps {
+                sh 'docker images'
+            }
         }
-      }
-    }
 
-  } // stages
+        stage('Update Deployment File') {
+            steps {
+                dir('spring-boot-app-manifests') {
+                    sh '''
+                    echo "Updating deployment.yml image tag..."
+                    sed -i "s|image:.*|image: $DOCKER_REPO:$IMAGE_TAG|" deployment.yml
+                    echo "Updated deployment.yml content:"
+                    cat deployment.yml
+                    '''
+                }
+            }
+        }
+    }
 }
