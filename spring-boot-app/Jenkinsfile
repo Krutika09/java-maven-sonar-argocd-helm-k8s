@@ -57,14 +57,10 @@ pipeline {
             steps {
                 dir('spring-boot-app-manifests') {
                     sh '''
-                        if [ -f deployment.yml ]; then
-                            sed -i "s@image:.*@image: $IMAGE_NAME@g" deployment.yml
-                        else
-                            echo "deployment.yml not found!"
-                        exit 1
-                        fi
+                        sed -i "s@image:.*@image: $IMAGE_NAME@g" deployment.yml
                     '''
                 }
             }
         }
+    }
 }
