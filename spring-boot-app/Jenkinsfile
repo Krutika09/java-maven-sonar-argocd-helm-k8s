@@ -5,9 +5,11 @@ pipeline {
     SONAR_URL = "http://44.246.124.156:9000"
     GIT_REPO_NAME = "java-maven-sonar-argocd-helm-k8s"
     GIT_USER_NAME = "Krutika09"
+    DOCKER_IMAGE = "krutika09/ultimate-cicd:${BUILD_NUMBER}"
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         sh 'echo passed'
@@ -18,26 +20,23 @@ pipeline {
     stage('Build and Test') {
       steps {
         sh 'ls -ltr'
-        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+        sh 'cd spring-boot-app && mvn clean package'
       }
     }
 
     stage('Static Code Analysis') {
       steps {
         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=$SONAR_URL'
+          sh 'cd spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=$SONAR_URL'
         }
       }
     }
 
     stage('Build and Push Docker Image') {
-      environment {
-        DOCKER_IMAGE = "krutika09/ultimate-cicd:${BUILD_NUMBER}"
-      }
       steps {
         withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
           sh '''
-            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+            cd spring-boot-app
             docker build -t $DOCKER_IMAGE .
             echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
             docker push $DOCKER_IMAGE
@@ -52,13 +51,14 @@ pipeline {
           sh '''
             git config user.email "krutikayawale2002@gmail.com"
             git config user.name "Krutika Yawale"
-            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" spring-boot-app-manifests/deployment.yml
+            git add spring-boot-app-manifests/deployment.yml
             git commit -m "Update deployment image to version ${BUILD_NUMBER}"
             git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
           '''
         }
       }
     }
+
   }
 }
