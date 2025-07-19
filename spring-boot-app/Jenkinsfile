@@ -1,6 +1,10 @@
 pipeline {
   agent any
 
+  tools {
+    maven 'MAVEN3.9.7' // Replace with your configured Maven name in Jenkins
+  }
+
   environment {
     SONAR_URL = "http://44.246.124.156:9000"
     GIT_REPO_NAME = "java-maven-sonar-argocd-helm-k8s"
@@ -9,17 +13,14 @@ pipeline {
   }
 
   stages {
-
     stage('Checkout') {
       steps {
-        sh 'echo passed'
         git branch: 'main', url: 'https://github.com/Krutika09/java-maven-sonar-argocd-helm-k8s.git'
       }
     }
 
     stage('Build and Test') {
       steps {
-        sh 'ls -ltr'
         sh 'cd spring-boot-app && mvn clean package'
       }
     }
@@ -59,6 +60,5 @@ pipeline {
         }
       }
     }
-
   }
 }
